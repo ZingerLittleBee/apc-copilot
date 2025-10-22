@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Upload, FileText, Image as ImageIcon, Code, Shield, CheckCircle2, AlertTriangle, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -21,6 +21,14 @@ interface RiskItem {
   position?: { x: number; y: number; width: number; height: number }
 }
 
+// 计算图像在容器中的实际显示位置和尺寸
+interface ImageDisplayInfo {
+  displayWidth: number
+  displayHeight: number
+  offsetX: number
+  offsetY: number
+}
+
 export default function FileDetectionPage() {
   const [status, setStatus] = useState<DetectionStatus>("idle")
   const [fileType, setFileType] = useState<FileType | null>(null)
@@ -31,6 +39,74 @@ export default function FileDetectionPage() {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string>("")
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const imageRef = useRef<HTMLImageElement>(null)
+  const [imageDisplayInfo, setImageDisplayInfo] = useState<ImageDisplayInfo | null>(null)
+
+  // 计算图像在容器中的实际显示信息
+  const calculateImageDisplayInfo = (): ImageDisplayInfo | null => {
+    const img = imageRef.current
+    if (!img) return null
+
+    const containerWidth = img.parentElement?.clientWidth || 0
+    const containerHeight = img.parentElement?.clientHeight || 0
+    const naturalWidth = img.naturalWidth
+    const naturalHeight = img.naturalHeight
+
+    if (!naturalWidth || !naturalHeight || !containerWidth || !containerHeight) {
+      return null
+    }
+
+    // 计算图像的宽高比
+    const imageAspectRatio = naturalWidth / naturalHeight
+    const containerAspectRatio = containerWidth / containerHeight
+
+    let displayWidth: number
+    let displayHeight: number
+    let offsetX: number
+    let offsetY: number
+
+    // object-contain 的逻辑:图像会缩放以完全适应容器,保持宽高比
+    if (imageAspectRatio > containerAspectRatio) {
+      // 图像更宽,以容器宽度为准
+      displayWidth = containerWidth
+      displayHeight = containerWidth / imageAspectRatio
+      offsetX = 0
+      offsetY = (containerHeight - displayHeight) / 2
+    } else {
+      // 图像更高,以容器高度为准
+      displayHeight = containerHeight
+      displayWidth = containerHeight * imageAspectRatio
+      offsetX = (containerWidth - displayWidth) / 2
+      offsetY = 0
+    }
+
+    return {
+      displayWidth,
+      displayHeight,
+      offsetX,
+      offsetY,
+    }
+  }
+
+  // 当图像加载完成时计算显示信息
+  const handleImageLoad = () => {
+    const info = calculateImageDisplayInfo()
+    setImageDisplayInfo(info)
+  }
+
+  // 监听窗口大小变化,重新计算显示信息
+  // biome-ignore lint/correctness/useExhaustiveDependencies: static function
+    useEffect(() => {
+    if (!uploadedImage) return
+
+    const handleResize = () => {
+      const info = calculateImageDisplayInfo()
+      setImageDisplayInfo(info)
+    }
+
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [uploadedImage])
 
   // 处理图像文件选择
   const handleImageSelect = () => {
@@ -304,20 +380,34 @@ export default function FileDetectionPage() {
                 {fileType === "image" && uploadedImage ? (
                   <>
                     <img
+                      ref={imageRef}
                       src={uploadedImage}
                       alt="上传的图像"
                       className="w-full h-full object-contain"
+                      onLoad={handleImageLoad}
                     />
-                    {risks.map((risk) => (
-                      risk.position && (
+                    {imageDisplayInfo && risks.map((risk) => {
+                      if (!risk.position) return null
+
+                      // 将百分比位置转换为像素位置
+                      const boxLeft = (risk.position.x / 100) * imageDisplayInfo.displayWidth
+                      const boxTop = (risk.position.y / 100) * imageDisplayInfo.displayHeight
+                      const boxWidth = (risk.position.width / 100) * imageDisplayInfo.displayWidth
+                      const boxHeight = (risk.position.height / 100) * imageDisplayInfo.displayHeight
+
+                      // 加上图像在容器中的偏移量
+                      const finalLeft = imageDisplayInfo.offsetX + boxLeft
+                      const finalTop = imageDisplayInfo.offsetY + boxTop
+
+                      return (
                         <div
                           key={risk.id}
                           className="absolute border-2 border-destructive bg-destructive/10"
                           style={{
-                            left: `${risk.position.x}%`,
-                            top: `${risk.position.y}%`,
-                            width: `${risk.position.width}%`,
-                            height: `${risk.position.height}%`,
+                            left: `${finalLeft}px`,
+                            top: `${finalTop}px`,
+                            width: `${boxWidth}px`,
+                            height: `${boxHeight}px`,
                           }}
                         >
                           <div className="absolute -top-6 left-0 bg-destructive text-white text-xs px-2 py-1 rounded whitespace-nowrap">
@@ -325,7 +415,7 @@ export default function FileDetectionPage() {
                           </div>
                         </div>
                       )
-                    ))}
+                    })}
                   </>
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
@@ -365,21 +455,34 @@ export default function FileDetectionPage() {
                         src={uploadedImage}
                         alt="原始图像"
                         className="w-full h-full object-contain"
+                        onLoad={handleImageLoad}
                       />
-                      {risks.map((risk) => (
-                        risk.position && (
+                      {imageDisplayInfo && risks.map((risk) => {
+                        if (!risk.position) return null
+
+                        // 将百分比位置转换为像素位置
+                        const boxLeft = (risk.position.x / 100) * imageDisplayInfo.displayWidth
+                        const boxTop = (risk.position.y / 100) * imageDisplayInfo.displayHeight
+                        const boxWidth = (risk.position.width / 100) * imageDisplayInfo.displayWidth
+                        const boxHeight = (risk.position.height / 100) * imageDisplayInfo.displayHeight
+
+                        // 加上图像在容器中的偏移量
+                        const finalLeft = imageDisplayInfo.offsetX + boxLeft
+                        const finalTop = imageDisplayInfo.offsetY + boxTop
+
+                        return (
                           <div
                             key={risk.id}
                             className="absolute border-2 border-destructive bg-destructive/10"
                             style={{
-                              left: `${risk.position.x}%`,
-                              top: `${risk.position.y}%`,
-                              width: `${risk.position.width}%`,
-                              height: `${risk.position.height}%`,
+                              left: `${finalLeft}px`,
+                              top: `${finalTop}px`,
+                              width: `${boxWidth}px`,
+                              height: `${boxHeight}px`,
                             }}
                           />
                         )
-                      ))}
+                      })}
                     </>
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
