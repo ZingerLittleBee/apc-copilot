@@ -17,6 +17,9 @@ import {
   IconSearch,
   IconSettings,
   IconUsers,
+  IconShieldCheck,
+  IconFileSearch,
+  IconAlertTriangle,
 } from "@tabler/icons-react"
 
 import { NavDocuments } from "@/components/nav-documents"
@@ -42,28 +45,23 @@ const data = {
   navMain: [
     {
       title: "Dashboard",
-      url: "#",
+      url: "/dashboard",
       icon: IconDashboard,
     },
     {
-      title: "Lifecycle",
-      url: "#",
-      icon: IconListDetails,
+      title: "文件检测与脱敏",
+      url: "/dashboard/file-detection",
+      icon: IconFileSearch,
     },
     {
-      title: "Analytics",
-      url: "#",
-      icon: IconChartBar,
+      title: "Prompt 防火墙",
+      url: "/dashboard/prompt-shield",
+      icon: IconShieldCheck,
     },
     {
-      title: "Projects",
-      url: "#",
-      icon: IconFolder,
-    },
-    {
-      title: "Team",
-      url: "#",
-      icon: IconUsers,
+      title: "AI 输出审查",
+      url: "/dashboard/output-review",
+      icon: IconAlertTriangle,
     },
   ],
   navClouds: [
@@ -160,9 +158,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               asChild
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
-              <a href="#">
+              <a href="/dashboard">
                 <IconInnerShadowTop className="!size-5" />
-                <span className="text-base font-semibold">Acme Inc.</span>
+                <span className="text-base font-semibold">APC Copilot</span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
