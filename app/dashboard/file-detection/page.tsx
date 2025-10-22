@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Upload, FileText, Image as ImageIcon, Code, Shield, CheckCircle2, AlertTriangle, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,9 +8,10 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { detectAndMapImage } from "@/request/image"
 
 type FileType = "image" | "document" | "code"
-type DetectionStatus = "idle" | "uploading" | "detecting" | "completed"
+type DetectionStatus = "idle" | "uploading" | "detecting" | "completed" | "error"
 
 interface RiskItem {
   id: string
@@ -20,6 +21,14 @@ interface RiskItem {
   position?: { x: number; y: number; width: number; height: number }
 }
 
+// 计算图像在容器中的实际显示位置和尺寸
+interface ImageDisplayInfo {
+  displayWidth: number
+  displayHeight: number
+  offsetX: number
+  offsetY: number
+}
+
 export default function FileDetectionPage() {
   const [status, setStatus] = useState<DetectionStatus>("idle")
   const [fileType, setFileType] = useState<FileType | null>(null)
@@ -27,11 +36,151 @@ export default function FileDetectionPage() {
   const [progress, setProgress] = useState(0)
   const [risks, setRisks] = useState<RiskItem[]>([])
   const [showComparison, setShowComparison] = useState(false)
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string>("")
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const imageRef = useRef<HTMLImageElement>(null)
+  const [imageDisplayInfo, setImageDisplayInfo] = useState<ImageDisplayInfo | null>(null)
 
-  // 模拟文件上传和检测
+  // 计算图像在容器中的实际显示信息
+  const calculateImageDisplayInfo = (): ImageDisplayInfo | null => {
+    const img = imageRef.current
+    if (!img) return null
+
+    const containerWidth = img.parentElement?.clientWidth || 0
+    const containerHeight = img.parentElement?.clientHeight || 0
+    const naturalWidth = img.naturalWidth
+    const naturalHeight = img.naturalHeight
+
+    if (!naturalWidth || !naturalHeight || !containerWidth || !containerHeight) {
+      return null
+    }
+
+    // 计算图像的宽高比
+    const imageAspectRatio = naturalWidth / naturalHeight
+    const containerAspectRatio = containerWidth / containerHeight
+
+    let displayWidth: number
+    let displayHeight: number
+    let offsetX: number
+    let offsetY: number
+
+    // object-contain 的逻辑:图像会缩放以完全适应容器,保持宽高比
+    if (imageAspectRatio > containerAspectRatio) {
+      // 图像更宽,以容器宽度为准
+      displayWidth = containerWidth
+      displayHeight = containerWidth / imageAspectRatio
+      offsetX = 0
+      offsetY = (containerHeight - displayHeight) / 2
+    } else {
+      // 图像更高,以容器高度为准
+      displayHeight = containerHeight
+      displayWidth = containerHeight * imageAspectRatio
+      offsetX = (containerWidth - displayWidth) / 2
+      offsetY = 0
+    }
+
+    return {
+      displayWidth,
+      displayHeight,
+      offsetX,
+      offsetY,
+    }
+  }
+
+  // 当图像加载完成时计算显示信息
+  const handleImageLoad = () => {
+    const info = calculateImageDisplayInfo()
+    setImageDisplayInfo(info)
+  }
+
+  // 监听窗口大小变化,重新计算显示信息
+  // biome-ignore lint/correctness/useExhaustiveDependencies: static function
+    useEffect(() => {
+    if (!uploadedImage) return
+
+    const handleResize = () => {
+      const info = calculateImageDisplayInfo()
+      setImageDisplayInfo(info)
+    }
+
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [uploadedImage])
+
+  // 处理图像文件选择
+  const handleImageSelect = () => {
+    fileInputRef.current?.click()
+  }
+
+  // 处理文件变化（真实上传）
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    // 验证文件类型
+    if (!file.type.startsWith("image/")) {
+      setErrorMessage("请选择图像文件")
+      setStatus("error")
+      return
+    }
+
+    setFileType("image")
+    setFileName(file.name)
+    setStatus("uploading")
+    setProgress(0)
+    setErrorMessage("")
+
+    // 创建图像预览
+    const imageUrl = URL.createObjectURL(file)
+    setUploadedImage(imageUrl)
+
+    // 模拟上传进度
+    const uploadInterval = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(uploadInterval)
+          setStatus("detecting")
+          performRealDetection(file)
+          return 100
+        }
+        return prev + 10
+      })
+    }, 200)
+  }
+
+  // 执行真实的图像检测
+  const performRealDetection = async (file: File) => {
+    try {
+      const results = await detectAndMapImage(file)
+
+      // 将 MappedDetectionResult 转换为 RiskItem
+      const riskItems: RiskItem[] = results.map((result) => ({
+        id: result.id,
+        type: result.type,
+        content: result.content,
+        severity: result.severity,
+        position: result.position,
+      }))
+
+      setRisks(riskItems)
+      setStatus("completed")
+    } catch (error) {
+      console.error("检测失败:", error)
+      setErrorMessage(error instanceof Error ? error.message : "检测失败,请重试")
+      setStatus("error")
+    }
+  }
+
+  // 处理文档和代码文件上传（保留模拟逻辑）
   const handleFileUpload = (type: FileType) => {
+    if (type === "image") {
+      handleImageSelect()
+      return
+    }
+
     setFileType(type)
-    setFileName(type === "image" ? "company-photo.jpg" : type === "document" ? "contract.pdf" : "api-config.js")
+    setFileName(type === "document" ? "contract.pdf" : "api-config.js")
     setStatus("uploading")
     setProgress(0)
 
@@ -49,15 +198,11 @@ export default function FileDetectionPage() {
     }, 200)
   }
 
-  // 模拟 AI 检测过程
+  // 模拟 AI 检测过程（仅用于文档和代码）
   const simulateDetection = (type: FileType) => {
     setTimeout(() => {
       const mockRisks: Record<FileType, RiskItem[]> = {
-        image: [
-          { id: "1", type: "人脸信息", content: "检测到 3 张未授权人脸", severity: "high", position: { x: 20, y: 30, width: 30, height: 40 } },
-          { id: "2", type: "身份证号", content: "检测到身份证号码", severity: "high", position: { x: 60, y: 70, width: 35, height: 10 } },
-          { id: "3", type: "公司 Logo", content: "检测到未授权品牌标识", severity: "medium", position: { x: 10, y: 10, width: 15, height: 15 } },
-        ],
+        image: [],
         document: [
           { id: "1", type: "客户信息", content: "检测到 15 条客户姓名和联系方式", severity: "high" },
           { id: "2", type: "银行账号", content: "检测到 3 个银行账号", severity: "high" },
@@ -90,10 +235,27 @@ export default function FileDetectionPage() {
     setProgress(0)
     setRisks([])
     setShowComparison(false)
+    setErrorMessage("")
+    if (uploadedImage) {
+      URL.revokeObjectURL(uploadedImage)
+      setUploadedImage(null)
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
   }
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:gap-6 md:p-6">
+      {/* 隐藏的文件输入 */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">文件检测与脱敏</h1>
@@ -107,44 +269,52 @@ export default function FileDetectionPage() {
         )}
       </div>
 
+      {/* 错误提示 */}
+      {status === "error" && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{errorMessage || "操作失败,请重试"}</AlertDescription>
+        </Alert>
+      )}
+
       {status === "idle" && (
         <div className="grid gap-4 md:grid-cols-3">
-          <Card className="cursor-pointer transition-all hover:shadow-md" onClick={() => handleFileUpload("image")}>
+          <Card className="transition-all hover:shadow-md">
             <CardHeader>
               <ImageIcon className="h-12 w-12 text-primary mb-2" />
               <CardTitle>图像文件</CardTitle>
-              <CardDescription>检测图片中的人脸、身份证、车牌等敏感信息</CardDescription>
+              <CardDescription>检测图片中的人脸、敏感内容等信息（真实 AI 检测）</CardDescription>
             </CardHeader>
             <CardContent>
-              <Button className="w-full">
+              <Button className="w-full" onClick={() => handleFileUpload("image")}>
                 <Upload className="mr-2 h-4 w-4" />
                 上传图像
               </Button>
             </CardContent>
           </Card>
 
-          <Card className="cursor-pointer transition-all hover:shadow-md" onClick={() => handleFileUpload("document")}>
+          <Card className="transition-all hover:shadow-md">
             <CardHeader>
               <FileText className="h-12 w-12 text-primary mb-2" />
               <CardTitle>文档文件</CardTitle>
               <CardDescription>检测 PDF、Word 中的客户信息、合同条款等</CardDescription>
             </CardHeader>
             <CardContent>
-              <Button className="w-full">
+              <Button className="w-full" onClick={() => handleFileUpload("document")}>
                 <Upload className="mr-2 h-4 w-4" />
                 上传文档
               </Button>
             </CardContent>
           </Card>
 
-          <Card className="cursor-pointer transition-all hover:shadow-md" onClick={() => handleFileUpload("code")}>
+          <Card className="transition-all hover:shadow-md">
             <CardHeader>
               <Code className="h-12 w-12 text-primary mb-2" />
               <CardTitle>代码文件</CardTitle>
               <CardDescription>检测代码中的 API 密钥、密码、内网地址等</CardDescription>
             </CardHeader>
             <CardContent>
-              <Button className="w-full">
+              <Button className="w-full" onClick={() => handleFileUpload("code")}>
                 <Upload className="mr-2 h-4 w-4" />
                 上传代码
               </Button>
@@ -207,27 +377,51 @@ export default function FileDetectionPage() {
             </CardHeader>
             <CardContent>
               <div className="relative aspect-video bg-muted rounded-lg overflow-hidden">
-                <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
-                  {fileType === "image" ? "图像预览" : fileType === "document" ? "文档预览" : "代码预览"}
-                </div>
-                {fileType === "image" && risks.map((risk) => (
-                  risk.position && (
-                    <div
-                      key={risk.id}
-                      className="absolute border-2 border-destructive bg-destructive/10"
-                      style={{
-                        left: `${risk.position.x}%`,
-                        top: `${risk.position.y}%`,
-                        width: `${risk.position.width}%`,
-                        height: `${risk.position.height}%`,
-                      }}
-                    >
-                      <div className="absolute -top-6 left-0 bg-destructive text-white text-xs px-2 py-1 rounded">
-                        {risk.type}
-                      </div>
-                    </div>
-                  )
-                ))}
+                {fileType === "image" && uploadedImage ? (
+                  <>
+                    <img
+                      ref={imageRef}
+                      src={uploadedImage}
+                      alt="上传的图像"
+                      className="w-full h-full object-contain"
+                      onLoad={handleImageLoad}
+                    />
+                    {imageDisplayInfo && risks.map((risk) => {
+                      if (!risk.position) return null
+
+                      // 将百分比位置转换为像素位置
+                      const boxLeft = (risk.position.x / 100) * imageDisplayInfo.displayWidth
+                      const boxTop = (risk.position.y / 100) * imageDisplayInfo.displayHeight
+                      const boxWidth = (risk.position.width / 100) * imageDisplayInfo.displayWidth
+                      const boxHeight = (risk.position.height / 100) * imageDisplayInfo.displayHeight
+
+                      // 加上图像在容器中的偏移量
+                      const finalLeft = imageDisplayInfo.offsetX + boxLeft
+                      const finalTop = imageDisplayInfo.offsetY + boxTop
+
+                      return (
+                        <div
+                          key={risk.id}
+                          className="absolute border-2 border-destructive bg-destructive/10"
+                          style={{
+                            left: `${finalLeft}px`,
+                            top: `${finalTop}px`,
+                            width: `${boxWidth}px`,
+                            height: `${boxHeight}px`,
+                          }}
+                        >
+                          <div className="absolute -top-6 left-0 bg-destructive text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                            {risk.type}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </>
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
+                    {fileType === "image" ? "图像预览" : fileType === "document" ? "文档预览" : "代码预览"}
+                  </div>
+                )}
               </div>
               <Button className="w-full mt-4" onClick={handleDesensitize}>
                 <Shield className="mr-2 h-4 w-4" />
@@ -255,9 +449,46 @@ export default function FileDetectionPage() {
               </TabsList>
               <TabsContent value="before" className="space-y-4">
                 <div className="relative aspect-video bg-muted rounded-lg overflow-hidden">
-                  <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
-                    原始文件（含敏感信息）
-                  </div>
+                  {fileType === "image" && uploadedImage ? (
+                    <>
+                      <img
+                        src={uploadedImage}
+                        alt="原始图像"
+                        className="w-full h-full object-contain"
+                        onLoad={handleImageLoad}
+                      />
+                      {imageDisplayInfo && risks.map((risk) => {
+                        if (!risk.position) return null
+
+                        // 将百分比位置转换为像素位置
+                        const boxLeft = (risk.position.x / 100) * imageDisplayInfo.displayWidth
+                        const boxTop = (risk.position.y / 100) * imageDisplayInfo.displayHeight
+                        const boxWidth = (risk.position.width / 100) * imageDisplayInfo.displayWidth
+                        const boxHeight = (risk.position.height / 100) * imageDisplayInfo.displayHeight
+
+                        // 加上图像在容器中的偏移量
+                        const finalLeft = imageDisplayInfo.offsetX + boxLeft
+                        const finalTop = imageDisplayInfo.offsetY + boxTop
+
+                        return (
+                          <div
+                            key={risk.id}
+                            className="absolute border-2 border-destructive bg-destructive/10"
+                            style={{
+                              left: `${finalLeft}px`,
+                              top: `${finalTop}px`,
+                              width: `${boxWidth}px`,
+                              height: `${boxHeight}px`,
+                            }}
+                          />
+                        )
+                      })}
+                    </>
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
+                      原始文件（含敏感信息）
+                    </div>
+                  )}
                 </div>
                 <div className="grid gap-2">
                   {risks.map((risk) => (
@@ -271,9 +502,17 @@ export default function FileDetectionPage() {
               </TabsContent>
               <TabsContent value="after" className="space-y-4">
                 <div className="relative aspect-video bg-muted rounded-lg overflow-hidden">
-                  <div className="absolute inset-0 flex items-center justify-center text-green-600">
-                    ✓ 已脱敏文件（安全）
-                  </div>
+                  {fileType === "image" && uploadedImage ? (
+                    <img
+                      src={uploadedImage}
+                      alt="脱敏后图像"
+                      className="w-full h-full object-contain blur-md"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center text-green-600">
+                      ✓ 已脱敏文件（安全）
+                    </div>
+                  )}
                 </div>
                 <div className="grid gap-2">
                   {risks.map((risk) => (
