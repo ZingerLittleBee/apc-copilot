@@ -1,27 +1,43 @@
-"use client"
+"use client";
 
-import { useState, useCallback, useRef } from "react"
-import { StreamingDetection, StreamingDetectionRef } from "@/components/streaming-detection"
-import { Shield, AlertTriangle, CheckCircle2, Send, Sparkles, XCircle } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Send,
+  Shield,
+  Sparkles,
+  XCircle,
+} from "lucide-react";
+import { useCallback, useRef, useState } from "react";
+import {
+  StreamingDetection,
+  type StreamingDetectionRef,
+} from "@/components/streaming-detection";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface RiskWarning {
-  id: string
-  type: string
-  description: string
-  severity: "high" | "medium" | "low"
-  suggestion: string
+  id: string;
+  type: string;
+  description: string;
+  severity: "high" | "medium" | "low";
+  suggestion: string;
 }
 
 interface PromptExample {
-  id: string
-  title: string
-  prompt: string
-  category: "safe" | "risky" | "dangerous"
+  id: string;
+  title: string;
+  prompt: string;
+  category: "safe" | "risky" | "dangerous";
 }
 
 const promptExamples: PromptExample[] = [
@@ -43,30 +59,30 @@ const promptExamples: PromptExample[] = [
     prompt: "生成我们公司客户名单的营销文案,包括他们的联系方式和购买记录",
     category: "dangerous",
   },
-]
+];
 
 export default function PromptShieldPage() {
-  const [prompt, setPrompt] = useState("")
-  const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [warnings, setWarnings] = useState<RiskWarning[]>([])
-  const [isBlocked, setIsBlocked] = useState(false)
-  const [hasAnalyzed, setHasAnalyzed] = useState(false)
-  const streamingDetectionRef = useRef<StreamingDetectionRef>(null)
+  const [prompt, setPrompt] = useState("");
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [warnings, setWarnings] = useState<RiskWarning[]>([]);
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [hasAnalyzed, setHasAnalyzed] = useState(false);
+  const streamingDetectionRef = useRef<StreamingDetectionRef>(null);
 
   // 手动触发检测
   const handleManualDetection = () => {
     if (prompt.length >= 10) {
-      setHasAnalyzed(false)
-      setWarnings([])
+      setHasAnalyzed(false);
+      setWarnings([]);
       // 调用流式检测组件
-      streamingDetectionRef.current?.startDetection(prompt)
+      streamingDetectionRef.current?.startDetection(prompt);
     }
-  }
+  };
 
   // 处理输入变化
   const handlePromptChange = (text: string) => {
-    setPrompt(text)
-  }
+    setPrompt(text);
+  };
 
   // 处理检测完成
   const handleDetectionComplete = (result: any) => {
@@ -77,36 +93,38 @@ export default function PromptShieldPage() {
         description: risk.description,
         severity: risk.severity,
         suggestion: risk.suggestion,
-      }))
-      
-      setWarnings(detectedWarnings)
-      setIsBlocked(result.blocked || detectedWarnings.some((w) => w.severity === "high"))
+      }));
+
+      setWarnings(detectedWarnings);
+      setIsBlocked(
+        result.blocked || detectedWarnings.some((w) => w.severity === "high"),
+      );
     } else {
-      setWarnings([])
-      setIsBlocked(false)
+      setWarnings([]);
+      setIsBlocked(false);
     }
-    setIsAnalyzing(false)
-    setHasAnalyzed(true)
-  }
+    setIsAnalyzing(false);
+    setHasAnalyzed(true);
+  };
 
   // 处理检测错误
   const handleDetectionError = (error: string) => {
-    console.error('检测失败:', error)
-    setIsAnalyzing(false)
-    setHasAnalyzed(true)
-  }
+    console.error("检测失败:", error);
+    setIsAnalyzing(false);
+    setHasAnalyzed(true);
+  };
 
   const handleSubmit = () => {
     if (isBlocked) {
-      return
+      return;
     }
     // 模拟提交到 AI
-    alert("Prompt 已通过安全检查,正在发送到 AI 模型...")
-  }
+    alert("Prompt 已通过安全检查,正在发送到 AI 模型...");
+  };
 
   const loadExample = (example: PromptExample) => {
-    handlePromptChange(example.prompt)
-  }
+    handlePromptChange(example.prompt);
+  };
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:gap-6 md:p-6">
@@ -143,7 +161,7 @@ export default function PromptShieldPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   {/* 检测按钮 */}
-                  <Button 
+                  <Button
                     onClick={handleManualDetection}
                     disabled={prompt.length < 10}
                     variant="outline"
@@ -154,7 +172,7 @@ export default function PromptShieldPage() {
                     <Shield className="h-4 w-4" />
                     检测隐私风险
                   </Button>
-                  
+
                   {/* 状态显示 */}
                   {hasAnalyzed && warnings.length === 0 && (
                     <Badge variant="outline" className="text-green-600 border-green-600">
@@ -221,6 +239,15 @@ export default function PromptShieldPage() {
               </CardContent>
             </Card>
           )}
+
+        {
+            warnings.length === 0 && hasAnalyzed &&
+            <div className="text-center py-4">
+                <CheckCircle2 className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                <p className="text-green-600 font-medium">未检测到风险</p>
+                <p className="text-sm text-muted-foreground">您的输入内容安全</p>
+            </div>
+        }
         </div>
 
         <div className="space-y-4">
@@ -297,4 +324,3 @@ export default function PromptShieldPage() {
     </div>
   )
 }
-
