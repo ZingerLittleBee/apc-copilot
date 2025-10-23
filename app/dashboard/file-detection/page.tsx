@@ -9,6 +9,17 @@ import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { detectAndMapImage } from "@/request/image"
+// 移除直接导入，改为使用API调用
+
+// 代码检测结果类型定义
+interface CodeDetectionResult {
+  id: string;
+  type: string;
+  content: string;
+  severity: "high" | "medium" | "low";
+  lineNumber?: number;
+  codeSnippet?: string;
+}
 
 type FileType = "image" | "document" | "code"
 type DetectionStatus = "idle" | "uploading" | "detecting" | "completed" | "error"
@@ -19,6 +30,8 @@ interface RiskItem {
   content: string
   severity: "high" | "medium" | "low"
   position?: { x: number; y: number; width: number; height: number }
+  lineNumber?: number
+  codeSnippet?: string
 }
 
 // 计算图像在容器中的实际显示位置和尺寸
@@ -37,8 +50,10 @@ export default function FileDetectionPage() {
   const [risks, setRisks] = useState<RiskItem[]>([])
   const [showComparison, setShowComparison] = useState(false)
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
+  const [uploadedCodeContent, setUploadedCodeContent] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string>("")
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const imageInputRef = useRef<HTMLInputElement>(null)
+  const codeInputRef = useRef<HTMLInputElement>(null)
   const imageRef = useRef<HTMLImageElement>(null)
   const [imageDisplayInfo, setImageDisplayInfo] = useState<ImageDisplayInfo | null>(null)
 
@@ -110,11 +125,16 @@ export default function FileDetectionPage() {
 
   // 处理图像文件选择
   const handleImageSelect = () => {
-    fileInputRef.current?.click()
+    imageInputRef.current?.click()
   }
 
-  // 处理文件变化（真实上传）
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  // 处理代码文件选择
+  const handleCodeSelect = () => {
+    codeInputRef.current?.click()
+  }
+
+  // 处理图像文件变化
+  const handleImageFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
 
@@ -134,14 +154,14 @@ export default function FileDetectionPage() {
     // 创建图像预览
     const imageUrl = URL.createObjectURL(file)
     setUploadedImage(imageUrl)
-
+    
     // 模拟上传进度
     const uploadInterval = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 100) {
           clearInterval(uploadInterval)
           setStatus("detecting")
-          performRealDetection(file)
+          performRealImageDetection(file)
           return 100
         }
         return prev + 10
@@ -149,8 +169,71 @@ export default function FileDetectionPage() {
     }, 200)
   }
 
+  // 处理代码文件变化
+  const handleCodeFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    // 验证文件类型
+    const codeExtensions = [
+      'js', 'ts', 'jsx', 'tsx', 'py', 'java', 'cpp', 'c', 'cs', 'php', 'rb', 'go', 'rs',
+      'swift', 'kt', 'scala', 'sh', 'bash', 'ps1', 'sql', 'json', 'xml', 'yaml', 'yml',
+      'toml', 'ini', 'cfg', 'conf', 'env', 'properties'
+    ]
+    
+    const extension = file.name.split('.').pop()?.toLowerCase()
+    if (!extension || !codeExtensions.includes(extension)) {
+      setErrorMessage("请选择代码文件（支持 .js, .py, .java, .cpp, .json 等格式）")
+      setStatus("error")
+      return
+    }
+
+    setFileType("code")
+    setFileName(file.name)
+    setStatus("uploading")
+    setProgress(0)
+    setErrorMessage("")
+    
+    // 读取文件内容
+    try {
+      const content = await readFileContent(file)
+      setUploadedCodeContent(content)
+      
+      // 模拟上传进度
+      const uploadInterval = setInterval(() => {
+        setProgress((prev) => {
+          if (prev >= 100) {
+            clearInterval(uploadInterval)
+            setStatus("detecting")
+            performRealCodeDetection(file)
+            return 100
+          }
+          return prev + 10
+        })
+      }, 200)
+    } catch (error) {
+      setErrorMessage("读取文件失败")
+      setStatus("error")
+    }
+  }
+
+  // 读取文件内容
+  const readFileContent = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        const content = event.target?.result as string
+        resolve(content)
+      }
+      reader.onerror = () => {
+        reject(new Error("读取文件失败"))
+      }
+      reader.readAsText(file, "UTF-8")
+    })
+  }
+
   // 执行真实的图像检测
-  const performRealDetection = async (file: File) => {
+  const performRealImageDetection = async (file: File) => {
     try {
       const results = await detectAndMapImage(file)
 
@@ -172,13 +255,67 @@ export default function FileDetectionPage() {
     }
   }
 
-  // 处理文档和代码文件上传（保留模拟逻辑）
+  // 执行真实的代码检测（通过API）
+  const performRealCodeDetection = async (file: File) => {
+    try {
+      // 读取文件内容
+      const fileContent = await readFileContent(file)
+      
+      // 调用统一API进行检测
+      const response = await fetch('/api?type=code-detection', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileContent,
+          fileName: file.name,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || '检测失败')
+      }
+
+      const data = await response.json()
+      
+      if (!data.success) {
+        throw new Error(data.error || '检测失败')
+      }
+
+      // 将 CodeDetectionResult 转换为 RiskItem
+      const riskItems: RiskItem[] = data.results.map((result: CodeDetectionResult) => ({
+        id: result.id,
+        type: result.type,
+        content: result.content,
+        severity: result.severity,
+        lineNumber: result.lineNumber,
+        codeSnippet: result.codeSnippet,
+      }))
+
+      setRisks(riskItems)
+      setStatus("completed")
+    } catch (error) {
+      console.error("代码检测失败:", error)
+      setErrorMessage(error instanceof Error ? error.message : "代码检测失败,请重试")
+      setStatus("error")
+    }
+  }
+
+  // 处理文件上传
   const handleFileUpload = (type: FileType) => {
     if (type === "image") {
       handleImageSelect()
       return
     }
 
+    if (type === "code") {
+      handleCodeSelect()
+      return
+    }
+
+    // 文档文件保留模拟逻辑
     setFileType(type)
     setFileName(type === "document" ? "contract.pdf" : "api-config.js")
     setStatus("uploading")
@@ -240,8 +377,12 @@ export default function FileDetectionPage() {
       URL.revokeObjectURL(uploadedImage)
       setUploadedImage(null)
     }
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ""
+    setUploadedCodeContent(null)
+    if (imageInputRef.current) {
+      imageInputRef.current.value = ""
+    }
+    if (codeInputRef.current) {
+      codeInputRef.current.value = ""
     }
   }
 
@@ -249,11 +390,18 @@ export default function FileDetectionPage() {
     <div className="flex flex-1 flex-col gap-4 p-4 md:gap-6 md:p-6">
       {/* 隐藏的文件输入 */}
       <input
-        ref={fileInputRef}
+        ref={imageInputRef}
         type="file"
         accept="image/*"
         className="hidden"
-        onChange={handleFileChange}
+        onChange={handleImageFileChange}
+      />
+      <input
+        ref={codeInputRef}
+        type="file"
+        accept=".js,.ts,.jsx,.tsx,.py,.java,.cpp,.c,.cs,.php,.rb,.go,.rs,.swift,.kt,.scala,.sh,.bash,.ps1,.sql,.json,.xml,.yaml,.yml,.toml,.ini,.cfg,.conf,.env,.properties"
+        className="hidden"
+        onChange={handleCodeFileChange}
       />
 
       <div className="flex items-center justify-between">
@@ -283,7 +431,9 @@ export default function FileDetectionPage() {
             <CardHeader>
               <ImageIcon className="h-12 w-12 text-primary mb-2" />
               <CardTitle>图像文件</CardTitle>
-              <CardDescription>检测图片中的人脸、敏感内容等信息（真实 AI 检测）</CardDescription>
+              <CardDescription>
+                检测图片中的人脸、敏感内容等信息<br />（支持 JPG、PNG、GIF 等格式）
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <Button className="w-full" onClick={() => handleFileUpload("image")}>
@@ -297,7 +447,9 @@ export default function FileDetectionPage() {
             <CardHeader>
               <FileText className="h-12 w-12 text-primary mb-2" />
               <CardTitle>文档文件</CardTitle>
-              <CardDescription>检测 PDF、Word 中的客户信息、合同条款等</CardDescription>
+              <CardDescription>
+                检测 PDF、Word 中的客户信息、合同条款等<br />（支持 PDF、Word、Excel、PPT 等格式）
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <Button className="w-full" onClick={() => handleFileUpload("document")}>
@@ -311,7 +463,9 @@ export default function FileDetectionPage() {
             <CardHeader>
               <Code className="h-12 w-12 text-primary mb-2" />
               <CardTitle>代码文件</CardTitle>
-              <CardDescription>检测代码中的 API 密钥、密码、内网地址等</CardDescription>
+              <CardDescription>
+                检测代码中的 API 密钥、密码、内网地址等<br />（支持 JS、Python、Java、C++ 等）
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <Button className="w-full" onClick={() => handleFileUpload("code")}>
@@ -361,8 +515,18 @@ export default function FileDetectionPage() {
                           {risk.severity === "high" ? "高风险" : risk.severity === "medium" ? "中风险" : "低风险"}
                         </Badge>
                         <span className="font-medium">{risk.type}</span>
+                        {risk.lineNumber && (
+                          <Badge variant="outline" className="text-xs">
+                            第 {risk.lineNumber} 行
+                          </Badge>
+                        )}
                       </div>
                       <p className="text-sm">{risk.content}</p>
+                      {risk.codeSnippet && (
+                        <div className="mt-2 p-2 bg-muted rounded text-xs font-mono">
+                          <code>{risk.codeSnippet}</code>
+                        </div>
+                      )}
                     </div>
                   </AlertDescription>
                 </Alert>
@@ -417,6 +581,19 @@ export default function FileDetectionPage() {
                       )
                     })}
                   </>
+                ) : fileType === "code" && uploadedCodeContent ? (
+                  <div className="w-full h-full overflow-auto p-4">
+                    <pre className="text-sm">
+                      {uploadedCodeContent.split('\n').map((line, index) => (
+                        <div key={index} className="flex">
+                          <span className="text-muted-foreground mr-4 w-8 text-right select-none">
+                            {index + 1}
+                          </span>
+                          <span className="flex-1">{line}</span>
+                        </div>
+                      ))}
+                    </pre>
+                  </div>
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
                     {fileType === "image" ? "图像预览" : fileType === "document" ? "文档预览" : "代码预览"}
@@ -484,6 +661,22 @@ export default function FileDetectionPage() {
                         )
                       })}
                     </>
+                  ) : fileType === "code" && uploadedCodeContent ? (
+                    <div className="w-full h-full overflow-auto p-4">
+                      <pre className="text-sm">
+                        {uploadedCodeContent.split('\n').map((line, index) => {
+                          const hasRisk = risks.some(risk => risk.lineNumber === index + 1)
+                          return (
+                            <div key={index} className={`flex ${hasRisk ? 'bg-destructive/10' : ''}`}>
+                              <span className="text-muted-foreground mr-4 w-8 text-right select-none">
+                                {index + 1}
+                              </span>
+                              <span className="flex-1">{line}</span>
+                            </div>
+                          )
+                        })}
+                      </pre>
+                    </div>
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
                       原始文件（含敏感信息）
@@ -508,6 +701,24 @@ export default function FileDetectionPage() {
                       alt="脱敏后图像"
                       className="w-full h-full object-contain blur-md"
                     />
+                  ) : fileType === "code" && uploadedCodeContent ? (
+                    <div className="w-full h-full overflow-auto p-4">
+                      <pre className="text-sm">
+                        {uploadedCodeContent.split('\n').map((line, index) => {
+                          const hasRisk = risks.some(risk => risk.lineNumber === index + 1)
+                          return (
+                            <div key={index} className="flex">
+                              <span className="text-muted-foreground mr-4 w-8 text-right select-none">
+                                {index + 1}
+                              </span>
+                              <span className="flex-1">
+                                {hasRisk ? line.replace(/[a-zA-Z0-9@._-]/g, '*') : line}
+                              </span>
+                            </div>
+                          )
+                        })}
+                      </pre>
+                    </div>
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center text-green-600">
                       ✓ 已脱敏文件（安全）

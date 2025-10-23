@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback, useRef } from "react"
+import { StreamingDetection, StreamingDetectionRef } from "@/components/streaming-detection"
 import { Shield, AlertTriangle, CheckCircle2, Send, Sparkles, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -50,72 +51,49 @@ export default function PromptShieldPage() {
   const [warnings, setWarnings] = useState<RiskWarning[]>([])
   const [isBlocked, setIsBlocked] = useState(false)
   const [hasAnalyzed, setHasAnalyzed] = useState(false)
+  const streamingDetectionRef = useRef<StreamingDetectionRef>(null)
 
-  // 模拟实时检测
-  const analyzePrompt = (text: string) => {
+  // 手动触发检测
+  const handleManualDetection = () => {
+    if (prompt.length >= 10) {
+      setHasAnalyzed(false)
+      setWarnings([])
+      // 调用流式检测组件
+      streamingDetectionRef.current?.startDetection(prompt)
+    }
+  }
+
+  // 处理输入变化
+  const handlePromptChange = (text: string) => {
     setPrompt(text)
-    if (text.length < 10) {
+  }
+
+  // 处理检测完成
+  const handleDetectionComplete = (result: any) => {
+    if (result.risks && Array.isArray(result.risks)) {
+      const detectedWarnings: RiskWarning[] = result.risks.map((risk: any) => ({
+        id: risk.id,
+        type: risk.type,
+        description: risk.description,
+        severity: risk.severity,
+        suggestion: risk.suggestion,
+      }))
+      
+      setWarnings(detectedWarnings)
+      setIsBlocked(result.blocked || detectedWarnings.some((w) => w.severity === "high"))
+    } else {
       setWarnings([])
       setIsBlocked(false)
-      setHasAnalyzed(false)
-      return
     }
+    setIsAnalyzing(false)
+    setHasAnalyzed(true)
+  }
 
-    setIsAnalyzing(true)
-    setHasAnalyzed(false)
-
-    setTimeout(() => {
-      const detectedWarnings: RiskWarning[] = []
-
-      // 检测客户隐私
-      if (text.includes("客户") || text.includes("名单") || text.includes("联系方式")) {
-        detectedWarnings.push({
-          id: "1",
-          type: "客户隐私泄露",
-          description: "检测到可能涉及客户个人信息的请求",
-          severity: "high",
-          suggestion: "建议使用匿名化或脱敏后的数据进行分析",
-        })
-      }
-
-      // 检测商业机密
-      if (text.includes("销售数据") || text.includes("财务") || text.includes("商业计划")) {
-        detectedWarnings.push({
-          id: "2",
-          type: "商业机密风险",
-          description: "检测到可能涉及公司商业机密的内容",
-          severity: "medium",
-          suggestion: "建议在安全环境中处理敏感商业数据",
-        })
-      }
-
-      // 检测敏感操作
-      if (text.includes("购买记录") || text.includes("交易") || text.includes("账号")) {
-        detectedWarnings.push({
-          id: "3",
-          type: "敏感数据访问",
-          description: "检测到对敏感数据的访问请求",
-          severity: "high",
-          suggestion: "需要额外的权限验证和审计日志",
-        })
-      }
-
-      // 检测数据导出
-      if (text.includes("导出") || text.includes("下载") || text.includes("生成列表")) {
-        detectedWarnings.push({
-          id: "4",
-          type: "数据导出风险",
-          description: "检测到批量数据导出意图",
-          severity: "medium",
-          suggestion: "建议限制导出数据量并记录操作日志",
-        })
-      }
-
-      setWarnings(detectedWarnings)
-      setIsBlocked(detectedWarnings.some((w) => w.severity === "high"))
-      setIsAnalyzing(false)
-      setHasAnalyzed(true)
-    }, 800)
+  // 处理检测错误
+  const handleDetectionError = (error: string) => {
+    console.error('检测失败:', error)
+    setIsAnalyzing(false)
+    setHasAnalyzed(true)
   }
 
   const handleSubmit = () => {
@@ -127,7 +105,7 @@ export default function PromptShieldPage() {
   }
 
   const loadExample = (example: PromptExample) => {
-    analyzePrompt(example.prompt)
+    handlePromptChange(example.prompt)
   }
 
   return (
@@ -153,7 +131,7 @@ export default function PromptShieldPage() {
                   className="w-full min-h-[150px] p-4 border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary"
                   placeholder="例如: 帮我分析一下用户行为数据..."
                   value={prompt}
-                  onChange={(e) => analyzePrompt(e.target.value)}
+                  onChange={(e) => handlePromptChange(e.target.value)}
                 />
                 {isAnalyzing && (
                   <div className="absolute top-2 right-2">
@@ -164,6 +142,20 @@ export default function PromptShieldPage() {
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
+                  {/* 检测按钮 */}
+                  <Button 
+                    onClick={handleManualDetection}
+                    disabled={prompt.length < 10}
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2"
+                    data-testid="detection-button"
+                  >
+                    <Shield className="h-4 w-4" />
+                    检测隐私风险
+                  </Button>
+                  
+                  {/* 状态显示 */}
                   {hasAnalyzed && warnings.length === 0 && (
                     <Badge variant="outline" className="text-green-600 border-green-600">
                       <CheckCircle2 className="mr-1 h-3 w-3" />
@@ -184,6 +176,13 @@ export default function PromptShieldPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* 流式检测组件 */}
+          <StreamingDetection
+            ref={streamingDetectionRef}
+            onDetectionComplete={handleDetectionComplete}
+            onError={handleDetectionError}
+          />
 
           {warnings.length > 0 && (
             <Card>
