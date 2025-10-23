@@ -85,7 +85,7 @@ export const StreamingDetection = forwardRef<StreamingDetectionRef, StreamingDet
                     blocked: result.blocked || false,
                     reasoning: result.reasoning || fullResponse
                   };
-                  
+
                   setDetectionResult(detectionResult);
                   onDetectionComplete(detectionResult);
                 } catch (parseError) {
@@ -100,7 +100,7 @@ export const StreamingDetection = forwardRef<StreamingDetectionRef, StreamingDet
                 const parsed = JSON.parse(data);
                 if (parsed.type === 'chunk') {
                   fullResponse += parsed.content;
-                  
+
                   if (parsed.reasoning) {
                     setReasoningContent(prev => prev + parsed.reasoning);
                   }
@@ -161,55 +161,6 @@ export const StreamingDetection = forwardRef<StreamingDetectionRef, StreamingDet
                   {reasoningContent || '正在分析输入内容...'}
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* 检测结果显示 */}
-        {detectionResult && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                {detectionResult.blocked ? (
-                  <AlertTriangle className="h-5 w-5 text-red-500" />
-                ) : (
-                  <CheckCircle2 className="h-5 w-5 text-green-500" />
-                )}
-                检测结果
-                <Badge 
-                  variant={detectionResult.overallRisk === 'high' ? 'destructive' : 
-                          detectionResult.overallRisk === 'medium' ? 'secondary' : 'default'}
-                >
-                  {detectionResult.overallRisk === 'high' ? '高风险' : 
-                   detectionResult.overallRisk === 'medium' ? '中风险' : '低风险'}
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {detectionResult.risks.length > 0 ? (
-                <div className="space-y-3">
-                  {detectionResult.risks.map((risk) => (
-                    <Alert key={risk.id} variant={risk.severity === 'high' ? 'destructive' : 'default'}>
-                      <AlertTriangle className="h-4 w-4" />
-                      <AlertDescription>
-                        <div className="space-y-2">
-                          <div className="font-medium">{risk.type}</div>
-                          <div>{risk.description}</div>
-                          <div className="text-sm text-muted-foreground">
-                            建议：{risk.suggestion}
-                          </div>
-                        </div>
-                      </AlertDescription>
-                    </Alert>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-4">
-                  <CheckCircle2 className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                  <p className="text-green-600 font-medium">未检测到风险</p>
-                  <p className="text-sm text-muted-foreground">您的输入内容安全</p>
-                </div>
-              )}
             </CardContent>
           </Card>
         )}
