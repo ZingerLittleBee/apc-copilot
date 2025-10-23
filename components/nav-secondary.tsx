@@ -11,6 +11,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 
+// 补充选中样式
 export function NavSecondary({
   items,
   ...props
@@ -21,20 +22,34 @@ export function NavSecondary({
     icon: Icon
   }[]
 } & React.ComponentPropsWithoutRef<typeof SidebarGroup>) {
+  // 选中样式：检测当前路径
+  const pathname = (typeof window !== "undefined" && window.location?.pathname) || "";
   return (
     <SidebarGroup {...props}>
       <SidebarGroupContent>
         <SidebarMenu>
-          {items.map((item) => (
-            <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton asChild>
-                <a href={item.url}>
-                  <item.icon />
-                  <span>{item.title}</span>
-                </a>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
+          {items.map((item) => {
+            // 以url开头判定选中状态，支持部分匹配
+            const isActive =
+              item.url !== "#" && item.url !== "" && pathname.startsWith(item.url);
+            return (
+              <SidebarMenuItem key={item.title} data-active={isActive ? "true" : undefined}>
+                <SidebarMenuButton
+                  asChild
+                  className={
+                    isActive
+                      ? "bg-primary/90 font-semibold text-white shadow"
+                      : undefined
+                  }
+                >
+                  <a href={item.url}>
+                    <item.icon className={isActive ? "text-primary" : undefined} />
+                    <span>{item.title}</span>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>

@@ -3,46 +3,30 @@
  * 当用户输入完prompt后，显示AI的思考检查过程
  */
 
-import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
-import { Shield, Brain, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
+import { useState, forwardRef, useImperativeHandle } from 'react';
+import { Brain, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface StreamingDetectionProps {
   onDetectionComplete: (result: any) => void;
   onError: (error: string) => void;
 }
 
-interface DetectionResult {
-  risks: Array<{
-    id: string;
-    type: string;
-    description: string;
-    severity: 'high' | 'medium' | 'low';
-    suggestion: string;
-  }>;
-  overallRisk: 'high' | 'medium' | 'low';
-  blocked: boolean;
-  reasoning: string;
-}
 
 export const StreamingDetection = forwardRef<StreamingDetectionRef, StreamingDetectionProps>(
   ({ onDetectionComplete, onError }, ref) => {
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [reasoningContent, setReasoningContent] = useState('');
-    const [detectionResult, setDetectionResult] = useState<DetectionResult | null>(null);
 
     // 开始检测
-    const startDetection = async (prompt: string) => {
+    const startDetection = async (prompt: string, industrySettings?: any) => {
       if (!prompt || prompt.length < 10) {
-        setDetectionResult(null);
         return;
       }
 
       setIsAnalyzing(true);
       setReasoningContent('');
-      setDetectionResult(null);
 
       try {
         const response = await fetch('/api?type=prompt-detection', {
@@ -50,7 +34,10 @@ export const StreamingDetection = forwardRef<StreamingDetectionRef, StreamingDet
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ prompt }),
+          body: JSON.stringify({ 
+            prompt, 
+            industrySettings 
+          }),
         });
 
         if (!response.ok) {
@@ -79,15 +66,7 @@ export const StreamingDetection = forwardRef<StreamingDetectionRef, StreamingDet
                 // 处理完整响应
                 try {
                   const result = JSON.parse(fullResponse);
-                  const detectionResult: DetectionResult = {
-                    risks: result.risks || [],
-                    overallRisk: result.overallRisk || 'low',
-                    blocked: result.blocked || false,
-                    reasoning: result.reasoning || fullResponse
-                  };
-                  
-                  setDetectionResult(detectionResult);
-                  onDetectionComplete(detectionResult);
+                  onDetectionComplete(result);
                 } catch (parseError) {
                   console.error('解析检测结果失败:', parseError);
                   onError('解析检测结果失败');
@@ -124,7 +103,6 @@ export const StreamingDetection = forwardRef<StreamingDetectionRef, StreamingDet
     const reset = () => {
       setReasoningContent('');
       setIsAnalyzing(false);
-      setDetectionResult(null);
     };
 
     // 暴露方法给父组件
@@ -165,54 +143,6 @@ export const StreamingDetection = forwardRef<StreamingDetectionRef, StreamingDet
           </Card>
         )}
 
-        {/* 检测结果显示 */}
-        {detectionResult && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                {detectionResult.blocked ? (
-                  <AlertTriangle className="h-5 w-5 text-red-500" />
-                ) : (
-                  <CheckCircle2 className="h-5 w-5 text-green-500" />
-                )}
-                检测结果
-                <Badge 
-                  variant={detectionResult.overallRisk === 'high' ? 'destructive' : 
-                          detectionResult.overallRisk === 'medium' ? 'secondary' : 'default'}
-                >
-                  {detectionResult.overallRisk === 'high' ? '高风险' : 
-                   detectionResult.overallRisk === 'medium' ? '中风险' : '低风险'}
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {detectionResult.risks.length > 0 ? (
-                <div className="space-y-3">
-                  {detectionResult.risks.map((risk) => (
-                    <Alert key={risk.id} variant={risk.severity === 'high' ? 'destructive' : 'default'}>
-                      <AlertTriangle className="h-4 w-4" />
-                      <AlertDescription>
-                        <div className="space-y-2">
-                          <div className="font-medium">{risk.type}</div>
-                          <div>{risk.description}</div>
-                          <div className="text-sm text-muted-foreground">
-                            建议：{risk.suggestion}
-                          </div>
-                        </div>
-                      </AlertDescription>
-                    </Alert>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-4">
-                  <CheckCircle2 className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                  <p className="text-green-600 font-medium">未检测到风险</p>
-                  <p className="text-sm text-muted-foreground">您的输入内容安全</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
       </div>
     );
   }
@@ -220,7 +150,7 @@ export const StreamingDetection = forwardRef<StreamingDetectionRef, StreamingDet
 
 // 导出用于ref的方法
 export interface StreamingDetectionRef {
-  startDetection: (prompt: string) => Promise<void>;
+  startDetection: (prompt: string, industrySettings?: any) => Promise<void>;
   reset: () => void;
 }
 

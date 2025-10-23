@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useRef } from "react"
+import { useState, useCallback, useRef, useEffect } from "react"
 import { StreamingDetection, StreamingDetectionRef } from "@/components/streaming-detection"
 import { Shield, AlertTriangle, CheckCircle2, Send, Sparkles, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -51,15 +51,29 @@ export default function PromptShieldPage() {
   const [warnings, setWarnings] = useState<RiskWarning[]>([])
   const [isBlocked, setIsBlocked] = useState(false)
   const [hasAnalyzed, setHasAnalyzed] = useState(false)
+  const [industrySettings, setIndustrySettings] = useState<any>(null)
   const streamingDetectionRef = useRef<StreamingDetectionRef>(null)
+
+  // 加载行业设置
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('privacy-detection-settings')
+    if (savedSettings) {
+      try {
+        const settings = JSON.parse(savedSettings)
+        setIndustrySettings(settings)
+      } catch (error) {
+        console.error('加载行业设置失败:', error)
+      }
+    }
+  }, [])
 
   // 手动触发检测
   const handleManualDetection = () => {
     if (prompt.length >= 10) {
       setHasAnalyzed(false)
       setWarnings([])
-      // 调用流式检测组件
-      streamingDetectionRef.current?.startDetection(prompt)
+      // 调用流式检测组件，传递行业设置
+      streamingDetectionRef.current?.startDetection(prompt, industrySettings)
     }
   }
 
