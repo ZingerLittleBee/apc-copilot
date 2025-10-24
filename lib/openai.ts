@@ -17,7 +17,9 @@ export function getOpenAIClient() {
   return observeOpenAI(new OpenAI({
     apiKey,
     baseURL: 'https://ark.cn-beijing.volces.com/api/v3',
-  }));
+  }), {
+      tags: ['apc-ai']
+  });
 }
 
 // 类型定义 - 使用OpenAI标准类型
