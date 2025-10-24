@@ -27,7 +27,7 @@ import { detectAndMapImage } from "@/request/image";
 import ExcelViewerClient from "./_components/ExcelViewer";
 import { PPTViewerClient } from "./_components/PPTViewer";
 import { DocxViewer } from "./_components/DocxViewer";
-
+import { extractPDFText } from "@/lib/getPdfText";
 // 移除直接导入，改为使用API调用
 
 // 代码检测结果类型定义
@@ -424,7 +424,13 @@ export default function FileDetectionPage() {
   const performRealDocumentDetection = async (file: File) => {
     try {
       // 读取文件内容
-      const fileContent = await readFileContent(file);
+      let fileContent = await readFileContent(file);
+
+      if (file.type === "application/pdf") {
+        // 读取 PDF 内容
+        const pdfArrayBuffer = await file.arrayBuffer();
+        fileContent = await extractPDFText(pdfArrayBuffer);
+      }
 
       // 调用统一API进行检测
       const response = await fetch("/api?type=document-detection", {
