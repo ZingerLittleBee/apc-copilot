@@ -1,10 +1,11 @@
-import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
+"use client";
+// import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
 
 // 设置 worker
-GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.min.mjs",
-  import.meta.url
-).toString();
+// GlobalWorkerOptions.workerSrc = new URL(
+//   "pdfjs-dist/build/pdf.worker.min.mjs",
+//   import.meta.url
+// ).toString();
 
 // 检查是否在浏览器环境中
 const isBrowser = typeof window !== "undefined";
@@ -16,6 +17,17 @@ async function extractPDFText(pdfPath: ArrayBuffer) {
   }
   try {
     // 加载 PDF 文档
+    // @ts-ignore
+    const pdfjs = window.pdfjsLib as typeof import("pdfjs-dist/types/src/pdf");
+    // @ts-ignore
+    const pdfjsWorker = await import("pdfjs-dist/build/pdf.worker.min.mjs");
+
+    // 动态导入 pdfjs-dist，确保只在客户端执行
+    const { getDocument, GlobalWorkerOptions } = await import("pdfjs-dist");
+
+    // 设置 worker
+    GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
+    // pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
     const pdf = await getDocument(pdfPath).promise;
 
     // 获取页面数量

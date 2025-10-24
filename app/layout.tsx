@@ -25,6 +25,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <script src="/pdfjs/pdf.mjs" type="module" />
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
