@@ -29,14 +29,14 @@ export const StreamingDetection = forwardRef<StreamingDetectionRef, StreamingDet
       setReasoningContent('');
 
       try {
-        const response = await fetch('/api?type=prompt-detection', {
+        const response = await fetch('/api/ai?type=prompt-detection', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ 
-            prompt, 
-            industrySettings 
+          body: JSON.stringify({
+            prompt,
+            industrySettings
           }),
         });
 
@@ -79,7 +79,7 @@ export const StreamingDetection = forwardRef<StreamingDetectionRef, StreamingDet
                 const parsed = JSON.parse(data);
                 if (parsed.type === 'chunk') {
                   fullResponse += parsed.content;
-                  
+
                   if (parsed.reasoning) {
                     setReasoningContent(prev => prev + parsed.reasoning);
                   }
