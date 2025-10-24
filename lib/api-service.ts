@@ -5,6 +5,7 @@
 
 import OpenAI from 'openai';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
+import {observeOpenAI} from "@langfuse/openai";
 
 // ==================== 配置和初始化 ====================
 
@@ -13,14 +14,16 @@ import type { ChatCompletionMessageParam } from 'openai/resources/chat/completio
  */
 function getOpenAIClient() {
   const apiKey = process.env['ARK_API_KEY'];
-  
+
   if (!apiKey) {
     throw new Error('请配置 ARK_API_KEY 环境变量');
   }
-  
-  return new OpenAI({
+
+  return observeOpenAI(new OpenAI({
     apiKey,
     baseURL: 'https://ark.cn-beijing.volces.com/api/v3',
+  }), {
+      tags: ['apc-ai']
   });
 }
 
@@ -162,7 +165,7 @@ export async function createStreamingChatCompletion(
         content: part.choices[0]?.delta?.content || '',
         done: part.choices[0]?.finish_reason === 'stop',
       };
-      
+
       onChunk(chunk);
     }
 
@@ -243,7 +246,7 @@ export async function detectCodeSensitiveInfo(
 
     // 解析检测结果
     const results = parseDetectionResponse(chatResponse.data.content);
-    
+
     return {
       success: true,
       data: results
@@ -348,7 +351,7 @@ function extractManualDetection(response: string): CodeDetectionResult[] {
 
   for (const line of lines) {
     const trimmedLine = line.trim();
-    
+
     // 检测API密钥
     if (trimmedLine.includes('API') && trimmedLine.includes('密钥')) {
       results.push({
@@ -386,7 +389,7 @@ function extractManualDetection(response: string): CodeDetectionResult[] {
  */
 export function detectFileType(fileName: string): string {
   const extension = fileName.split('.').pop()?.toLowerCase();
-  
+
   const typeMap: Record<string, string> = {
     'js': 'javascript',
     'ts': 'typescript',
@@ -432,7 +435,7 @@ export function isCodeFile(fileName: string): boolean {
     'swift', 'kt', 'scala', 'sh', 'bash', 'ps1', 'sql', 'json', 'xml', 'yaml', 'yml',
     'toml', 'ini', 'cfg', 'conf', 'env', 'properties'
   ];
-  
+
   const extension = fileName.split('.').pop()?.toLowerCase();
   return codeExtensions.includes(extension || '');
 }
@@ -448,10 +451,10 @@ export async function detectImageSensitiveInfo(
   try {
     // 导入现有的图像检测功能
     const { detectAndMapImage } = await import('@/request/image');
-    
+
     // 使用现有的图像检测逻辑
     const results = await detectAndMapImage(imageFile);
-    
+
     return {
       success: true,
       data: results
@@ -546,14 +549,14 @@ export async function deleteDetectionRecord(
  */
 export function handleApiError(error: unknown): ApiResponse {
   console.error('API错误:', error);
-  
+
   if (error instanceof Error) {
     return {
       success: false,
       error: error.message
     };
   }
-  
+
   return {
     success: false,
     error: '未知错误'

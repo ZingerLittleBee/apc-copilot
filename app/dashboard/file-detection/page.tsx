@@ -375,7 +375,7 @@ export default function FileDetectionPage() {
       const fileContent = await readFileContent(file);
 
       // 调用统一API进行检测
-      const response = await fetch("/api?type=code-detection", {
+      const response = await fetch("/api/ai?type=code-detection", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -433,7 +433,7 @@ export default function FileDetectionPage() {
       }
 
       // 调用统一API进行检测
-      const response = await fetch("/api?type=document-detection", {
+      const response = await fetch("/api/ai?type=document-detection", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
