@@ -64,6 +64,16 @@ import {
 } from "@/components/ui/chart"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import {
   Drawer,
   DrawerClose,
   DrawerContent,
@@ -112,7 +122,7 @@ export const schema = z.object({
   type: z.string(),
   status: z.string(),
   risk: z.string(),
-  limit: z.string(),
+    reasoning: z.string(),
   reviewer: z.string(),
 })
 
@@ -211,11 +221,42 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
     ),
   },
   {
-    accessorKey: "limit",
-    header: "Limit",
-    cell: ({ row }) => (
-      row.original.limit
-    ),
+    accessorKey: "reasoning",
+    header: "Reason",
+    cell: ({ row }) => {
+      const reasoning = row.original.reasoning
+      const hasContent = reasoning && reasoning !== "-"
+
+      return (
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!hasContent}
+              className="text-xs"
+            >
+              {hasContent ? "View Details" : "No data"}
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="flex flex-col gap-0 p-0 sm:max-h-[min(640px,80vh)] sm:max-w-lg">
+            <DialogHeader className="border-b px-6 py-4">
+              <DialogTitle>Reasoning Details</DialogTitle>
+            </DialogHeader>
+            <DialogDescription className="overflow-y-auto px-6 py-4 text-sm text-foreground">
+              {reasoning}
+            </DialogDescription>
+            <DialogFooter className="border-t px-6 py-4">
+              <DialogClose asChild>
+                <Button variant="outline" size="sm">
+                  Close
+                </Button>
+              </DialogClose>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )
+    },
   },
   {
     accessorKey: "reviewer",
@@ -736,12 +777,12 @@ function TableCellViewer({ item }: { item: z.infer<typeof schema> }) {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-3">
-                <Label htmlFor="target">Target</Label>
-                <Input id="target" defaultValue={item.target} />
+                <Label htmlFor="target">Risk</Label>
+                <Input id="target" defaultValue={item.risk} />
               </div>
               <div className="flex flex-col gap-3">
-                <Label htmlFor="limit">Limit</Label>
-                <Input id="limit" defaultValue={item.limit} />
+                <Label htmlFor="limit">Reason</Label>
+                <Input id="limit" defaultValue={item.reasoning} />
               </div>
             </div>
             <div className="flex flex-col gap-3">
