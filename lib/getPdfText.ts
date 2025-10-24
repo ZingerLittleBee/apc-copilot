@@ -25,6 +25,7 @@ async function extractPDFText(pdfPath:ArrayBuffer) {
       const textContent = await page.getTextContent();
       
       // 将文本内容转换为字符串
+      // @ts-ignore
       const pageText = textContent.items.map(item => item.str).join(' ');
       pageTextPromises.push(pageText);
     }
