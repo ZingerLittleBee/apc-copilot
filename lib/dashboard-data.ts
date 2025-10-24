@@ -1,6 +1,7 @@
 /**
  * Dashboard 数据获取和处理工具
  */
+import {getTraceDetail, getTraceList} from "@/server/actions/data";
 
 export interface AITaskResult {
   risks: unknown[]
@@ -71,39 +72,6 @@ function extractAIResult(observations: unknown[]): AITaskResult | null {
 }
 
 /**
- * 获取所有记录
- */
-async function getAllRecords(): Promise<unknown[]> {
-  try {
-    const response = await fetch("/api/data")
-    if (!response.ok) {
-      throw new Error(`API 请求失败: ${response.status}`)
-    }
-    const data = await response.json()
-    return Array.isArray(data) ? data : data.data || []
-  } catch (error) {
-    console.error("获取所有记录失败:", error)
-    return []
-  }
-}
-
-/**
- * 获取单条记录的详细信息
- */
-async function getRecordDetail(id: string): Promise<unknown> {
-  try {
-    const response = await fetch(`/api/data?id=${id}`)
-    if (!response.ok) {
-      throw new Error(`API 请求失败: ${response.status}`)
-    }
-    return await response.json()
-  } catch (error) {
-    console.error(`获取记录 ${id} 详情失败:`, error)
-    return null
-  }
-}
-
-/**
  * 处理单条记录
  */
 async function processRecord(record: unknown): Promise<ProcessedRecord | null> {
@@ -119,19 +87,18 @@ async function processRecord(record: unknown): Promise<ProcessedRecord | null> {
   const id = String(recordObj.id)
 
   // 获取详细信息
-  const detail = await getRecordDetail(id)
+  const detail = await getTraceDetail(id)
 
   if (!detail) {
     return null
   }
 
-  const detailObj = detail as Record<string, unknown>
+  const detailObj = detail
 
   // 提取任务类型
   const metadata = detailObj.metadata as Record<string, unknown> | undefined
   const attributes = metadata?.attributes as Record<string, unknown> | undefined
-  const http = attributes?.http as Record<string, unknown> | undefined
-  const target = String(http?.target || "")
+  const target = attributes?.['http.target'] as string
 
   const taskType = extractTaskTypeFromUrl(target)
 
@@ -151,7 +118,7 @@ async function processRecord(record: unknown): Promise<ProcessedRecord | null> {
  * 获取并处理所有记录
  */
 export async function fetchAndProcessRecords(): Promise<ProcessedRecord[]> {
-  const records = await getAllRecords()
+  const records = (await getTraceList()).data
 
   if (records.length === 0) {
     return []

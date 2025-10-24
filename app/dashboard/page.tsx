@@ -1,13 +1,29 @@
 import { ChartAreaInteractive } from "@/components/chart-area-interactive"
-import { DataTable } from "@/components/data-table"
+import { DataTable, schema } from "@/components/data-table"
 import { SectionCards, type SectionCardData } from "@/components/section-cards"
 import {
   fetchAndProcessRecords,
   calculateStats,
   type ProcessedRecord,
 } from "@/lib/dashboard-data"
+import { z } from "zod"
 
-import data from "./data.json"
+/**
+ * 将 ProcessedRecord 转换为 DataTable 期望的格式
+ */
+function convertToDataTableFormat(
+  records: ProcessedRecord[]
+): z.infer<typeof schema>[] {
+  return records.map((record, index) => ({
+    id: index + 1, // DataTable 需要数字 ID
+    header: record.id, // 使用记录 ID 作为 header
+    type: record.taskType || "unknown", // 任务类型
+    status: record.aiResult?.blocked ? "Blocked" : "Done", // 根据 blocked 状态设置
+    target: record.aiResult?.overallRisk || "unknown", // 风险等级作为 target
+    limit: record.aiResult?.reasoning || "-", // 原因作为 limit
+    reviewer: "Assign reviewer", // 默认值
+  }))
+}
 
 async function getDashboardData() {
   try {
@@ -49,21 +65,26 @@ async function getDashboardData() {
       },
     ]
 
+    // 转换为 DataTable 格式
+    const dataTableData = convertToDataTableFormat(processedRecords)
+
     return {
       sectionCardsData,
       processedRecords,
+      dataTableData,
     }
   } catch (error) {
     console.error("获取 dashboard 数据失败:", error)
     return {
       sectionCardsData: undefined,
       processedRecords: [],
+      dataTableData: [],
     }
   }
 }
 
 export default async function Page() {
-  const { sectionCardsData, processedRecords } = await getDashboardData()
+  const { sectionCardsData, dataTableData } = await getDashboardData()
 
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
@@ -71,7 +92,7 @@ export default async function Page() {
       <div className="px-4 lg:px-6">
         <ChartAreaInteractive />
       </div>
-      <DataTable data={data} />
+      <DataTable data={dataTableData || []} />
     </div>
   )
 }
