@@ -986,6 +986,32 @@ export default function FileDetectionPage() {
                         })}
                       </pre>
                     </div>
+                  ) : fileType === "document" && pdfUrl ? (
+                    <>
+                      {pdfUrl && ext === "pdf" && (
+                        <div className="w-full h-full overflow-auto p-4">
+                          <object
+                            data={pdfUrl}
+                            type="application/pdf"
+                            className="w-full h-full"
+                          >
+                            <p>您的浏览器不支持 PDF 预览</p>
+                          </object>
+                        </div>
+                      )}
+                      {/* 这是excel */}
+                      {(ext === "xls" || ext === "xlsx") && (
+                        <ExcelViewerClient fileUrl={pdfUrl} />
+                      )}
+                      {/* ppt */}
+                      {(ext === "ppt" || ext === "pptx") && (
+                        <PPTViewerClient fileUrl={pdfUrl} />
+                      )}
+                      {/* doc */}
+                      {(ext === "doc" || ext === "docx") && (
+                        <DocxViewer fileUrl={pdfUrl} />
+                      )}
+                    </>
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
                       原始文件（含敏感信息）
@@ -1037,6 +1063,34 @@ export default function FileDetectionPage() {
                         })}
                       </pre>
                     </div>
+                  ) : fileType === "document" && pdfUrl ? (
+                    <>
+                      <div className="absolute inset-0 blur-md">
+                        {pdfUrl && ext === "pdf" && (
+                          <div className="w-full h-full overflow-auto p-4">
+                            <object
+                              data={pdfUrl}
+                              type="application/pdf"
+                              className="w-full h-full"
+                            >
+                              <p>您的浏览器不支持 PDF 预览</p>
+                            </object>
+                          </div>
+                        )}
+                        {/* 这是excel */}
+                        {(ext === "xls" || ext === "xlsx") && (
+                          <ExcelViewerClient fileUrl={pdfUrl} />
+                        )}
+                        {/* ppt */}
+                        {(ext === "ppt" || ext === "pptx") && (
+                          <PPTViewerClient fileUrl={pdfUrl} />
+                        )}
+                        {/* doc */}
+                        {(ext === "doc" || ext === "docx") && (
+                          <DocxViewer fileUrl={pdfUrl} />
+                        )}
+                      </div>
+                    </>
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center text-green-600">
                       ✓ 已脱敏文件（安全）
