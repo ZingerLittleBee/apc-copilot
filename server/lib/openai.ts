@@ -3,8 +3,8 @@
  * 整合OpenAI、代码检测、数据库等所有后端服务
  */
 
-import OpenAI from 'openai';
-import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
+import OpenAI from "openai";
+import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 
 // ==================== 配置和初始化 ====================
 
@@ -12,15 +12,15 @@ import type { ChatCompletionMessageParam } from 'openai/resources/chat/completio
  * 获取OpenAI客户端
  */
 function getOpenAIClient() {
-  const apiKey = process.env['ARK_API_KEY'];
-  
+  const apiKey = process.env["ARK_API_KEY"];
+
   if (!apiKey) {
-    throw new Error('请配置 ARK_API_KEY 环境变量');
+    throw new Error("请配置 ARK_API_KEY 环境变量");
   }
-  
+
   return new OpenAI({
     apiKey,
-    baseURL: 'https://ark.cn-beijing.volces.com/api/v3',
+    baseURL: "https://ark.cn-beijing.volces.com/api/v3",
   });
 }
 
@@ -38,7 +38,7 @@ export interface ApiResponse<T = any> {
 export interface ChatCompletionOptions {
   messages: ChatCompletionMessageParam[];
   model?: string;
-  reasoning_effort?: 'low' | 'medium' | 'high';
+  reasoning_effort?: "low" | "medium" | "high";
   stream?: boolean;
 }
 
@@ -69,7 +69,6 @@ export interface CodeDetectionOptions {
   fileType: string;
 }
 
-
 // ==================== OpenAI 服务 ====================
 
 /**
@@ -81,8 +80,8 @@ export async function createChatCompletion(
   try {
     const {
       messages,
-      model = 'doubao-seed-1-6-251015',
-      reasoning_effort = 'medium',
+      model = "doubao-seed-1-6-251015",
+      reasoning_effort = "medium",
     } = options;
 
     const client = getOpenAIClient();
@@ -95,15 +94,16 @@ export async function createChatCompletion(
     return {
       success: true,
       data: {
-        reasoning_content: (completion.choices[0]?.message as any)?.reasoning_content || '',
-        content: completion.choices[0]?.message?.content || '',
-      }
+        reasoning_content:
+          (completion.choices[0]?.message as any)?.reasoning_content || "",
+        content: completion.choices[0]?.message?.content || "",
+      },
     };
   } catch (error) {
-    console.error('OpenAI聊天完成失败:', error);
+    console.error("OpenAI聊天完成失败:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : '聊天完成失败'
+      error: error instanceof Error ? error.message : "聊天完成失败",
     };
   }
 }
@@ -118,8 +118,8 @@ export async function createStreamingChatCompletion(
   try {
     const {
       messages,
-      model = 'doubao-seed-1-6-251015',
-      reasoning_effort = 'medium',
+      model = "doubao-seed-1-6-251015",
+      reasoning_effort = "medium",
     } = options;
 
     const client = getOpenAIClient();
@@ -132,20 +132,21 @@ export async function createStreamingChatCompletion(
 
     for await (const part of stream) {
       const chunk: StreamingResponse = {
-        reasoning_content: (part.choices[0]?.delta as any)?.reasoning_content || '',
-        content: part.choices[0]?.delta?.content || '',
-        done: part.choices[0]?.finish_reason === 'stop',
+        reasoning_content:
+          (part.choices[0]?.delta as any)?.reasoning_content || "",
+        content: part.choices[0]?.delta?.content || "",
+        done: part.choices[0]?.finish_reason === "stop",
       };
-      
+
       onChunk(chunk);
     }
 
     return { success: true };
   } catch (error) {
-    console.error('OpenAI流式聊天完成失败:', error);
+    console.error("OpenAI流式聊天完成失败:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : '流式聊天完成失败'
+      error: error instanceof Error ? error.message : "流式聊天完成失败",
     };
   }
 }
@@ -158,16 +159,16 @@ export function createImageTextMessage(
   text: string
 ): ChatCompletionMessageParam {
   return {
-    role: 'user',
+    role: "user",
     content: [
       {
-        type: 'image_url',
+        type: "image_url",
         image_url: {
           url: imageUrl,
         },
       },
       {
-        type: 'text',
+        type: "text",
         text,
       },
     ],
@@ -179,7 +180,7 @@ export function createImageTextMessage(
  */
 export function createTextMessage(
   text: string,
-  role: 'user' | 'assistant' | 'system' = 'user'
+  role: "user" | "assistant" | "system" = "user"
 ): ChatCompletionMessageParam {
   return {
     role,
@@ -204,29 +205,29 @@ export async function detectCodeSensitiveInfo(
     // 调用OpenAI进行检测
     const chatResponse = await createChatCompletion({
       messages: [createTextMessage(prompt)],
-      model: 'doubao-seed-1-6-251015',
-      reasoning_effort: 'high',
+      model: "doubao-seed-1-6-251015",
+      reasoning_effort: "high",
     });
 
     if (!chatResponse.success || !chatResponse.data) {
       return {
         success: false,
-        error: chatResponse.error || '代码检测失败'
+        error: chatResponse.error || "代码检测失败",
       };
     }
 
     // 解析检测结果
     const results = parseDetectionResponse(chatResponse.data.content);
-    
+
     return {
       success: true,
-      data: results
+      data: results,
     };
   } catch (error) {
-    console.error('代码检测失败:', error);
+    console.error("代码检测失败:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : '代码检测失败，请重试'
+      error: error instanceof Error ? error.message : "代码检测失败，请重试",
     };
   }
 }
@@ -234,7 +235,11 @@ export async function detectCodeSensitiveInfo(
 /**
  * 构建检测提示词
  */
-function buildDetectionPrompt(fileContent: string, fileName: string, fileType: string): string {
+function buildDetectionPrompt(
+  fileContent: string,
+  fileName: string,
+  fileType: string
+): string {
   return `请分析以下${fileType}代码文件，检测其中的敏感信息。请重点关注：
 
 1. API密钥和访问令牌（如AWS、Google、Azure等云服务密钥）
@@ -285,7 +290,7 @@ function parseDetectionResponse(response: string): CodeDetectionResult[] {
     // 尝试提取JSON部分
     const jsonMatch = response.match(/\[[\s\S]*\]/);
     if (!jsonMatch) {
-      console.warn('未找到有效的JSON响应');
+      console.warn("未找到有效的JSON响应");
       return [];
     }
 
@@ -299,14 +304,14 @@ function parseDetectionResponse(response: string): CodeDetectionResult[] {
 
     return results.map((item, index) => ({
       id: item.id || `detection-${index}`,
-      type: item.type || '未知类型',
-      content: item.content || '检测到敏感信息',
-      severity: item.severity || 'medium',
+      type: item.type || "未知类型",
+      content: item.content || "检测到敏感信息",
+      severity: item.severity || "medium",
       lineNumber: item.lineNumber,
       codeSnippet: item.codeSnippet,
     }));
   } catch (error) {
-    console.error('解析检测结果失败:', error);
+    console.error("解析检测结果失败:", error);
     // 如果解析失败，尝试手动提取信息
     return extractManualDetection(response);
   }
@@ -317,37 +322,37 @@ function parseDetectionResponse(response: string): CodeDetectionResult[] {
  */
 function extractManualDetection(response: string): CodeDetectionResult[] {
   const results: CodeDetectionResult[] = [];
-  const lines = response.split('\n');
+  const lines = response.split("\n");
   let currentId = 1;
 
   for (const line of lines) {
     const trimmedLine = line.trim();
-    
+
     // 检测API密钥
-    if (trimmedLine.includes('API') && trimmedLine.includes('密钥')) {
+    if (trimmedLine.includes("API") && trimmedLine.includes("密钥")) {
       results.push({
         id: `manual-${currentId++}`,
-        type: 'API密钥',
+        type: "API密钥",
         content: trimmedLine,
-        severity: 'high',
+        severity: "high",
       });
     }
     // 检测密码
-    else if (trimmedLine.includes('密码') || trimmedLine.includes('password')) {
+    else if (trimmedLine.includes("密码") || trimmedLine.includes("password")) {
       results.push({
         id: `manual-${currentId++}`,
-        type: '密码',
+        type: "密码",
         content: trimmedLine,
-        severity: 'high',
+        severity: "high",
       });
     }
     // 检测IP地址
-    else if (trimmedLine.includes('IP') || trimmedLine.includes('内网')) {
+    else if (trimmedLine.includes("IP") || trimmedLine.includes("内网")) {
       results.push({
         id: `manual-${currentId++}`,
-        type: '内网地址',
+        type: "内网地址",
         content: trimmedLine,
-        severity: 'medium',
+        severity: "medium",
       });
     }
   }
@@ -359,42 +364,42 @@ function extractManualDetection(response: string): CodeDetectionResult[] {
  * 检测文件类型
  */
 export function detectFileType(fileName: string): string {
-  const extension = fileName.split('.').pop()?.toLowerCase();
-  
+  const extension = fileName.split(".").pop()?.toLowerCase();
+
   const typeMap: Record<string, string> = {
-    'js': 'javascript',
-    'ts': 'typescript',
-    'jsx': 'javascript',
-    'tsx': 'typescript',
-    'py': 'python',
-    'java': 'java',
-    'cpp': 'cpp',
-    'c': 'c',
-    'cs': 'csharp',
-    'php': 'php',
-    'rb': 'ruby',
-    'go': 'go',
-    'rs': 'rust',
-    'swift': 'swift',
-    'kt': 'kotlin',
-    'scala': 'scala',
-    'sh': 'bash',
-    'bash': 'bash',
-    'ps1': 'powershell',
-    'sql': 'sql',
-    'json': 'json',
-    'xml': 'xml',
-    'yaml': 'yaml',
-    'yml': 'yaml',
-    'toml': 'toml',
-    'ini': 'ini',
-    'cfg': 'config',
-    'conf': 'config',
-    'env': 'environment',
-    'properties': 'properties',
+    js: "javascript",
+    ts: "typescript",
+    jsx: "javascript",
+    tsx: "typescript",
+    py: "python",
+    java: "java",
+    cpp: "cpp",
+    c: "c",
+    cs: "csharp",
+    php: "php",
+    rb: "ruby",
+    go: "go",
+    rs: "rust",
+    swift: "swift",
+    kt: "kotlin",
+    scala: "scala",
+    sh: "bash",
+    bash: "bash",
+    ps1: "powershell",
+    sql: "sql",
+    json: "json",
+    xml: "xml",
+    yaml: "yaml",
+    yml: "yaml",
+    toml: "toml",
+    ini: "ini",
+    cfg: "config",
+    conf: "config",
+    env: "environment",
+    properties: "properties",
   };
 
-  return typeMap[extension || ''] || 'text';
+  return typeMap[extension || ""] || "text";
 }
 
 /**
@@ -402,15 +407,41 @@ export function detectFileType(fileName: string): string {
  */
 export function isCodeFile(fileName: string): boolean {
   const codeExtensions = [
-    'js', 'ts', 'jsx', 'tsx', 'py', 'java', 'cpp', 'c', 'cs', 'php', 'rb', 'go', 'rs',
-    'swift', 'kt', 'scala', 'sh', 'bash', 'ps1', 'sql', 'json', 'xml', 'yaml', 'yml',
-    'toml', 'ini', 'cfg', 'conf', 'env', 'properties'
+    "js",
+    "ts",
+    "jsx",
+    "tsx",
+    "py",
+    "java",
+    "cpp",
+    "c",
+    "cs",
+    "php",
+    "rb",
+    "go",
+    "rs",
+    "swift",
+    "kt",
+    "scala",
+    "sh",
+    "bash",
+    "ps1",
+    "sql",
+    "json",
+    "xml",
+    "yaml",
+    "yml",
+    "toml",
+    "ini",
+    "cfg",
+    "conf",
+    "env",
+    "properties",
   ];
-  
-  const extension = fileName.split('.').pop()?.toLowerCase();
-  return codeExtensions.includes(extension || '');
-}
 
+  const extension = fileName.split(".").pop()?.toLowerCase();
+  return codeExtensions.includes(extension || "");
+}
 
 // ==================== 通用工具函数 ====================
 
@@ -418,18 +449,18 @@ export function isCodeFile(fileName: string): boolean {
  * 处理API错误
  */
 export function handleApiError(error: unknown): ApiResponse {
-  console.error('API错误:', error);
-  
+  console.error("API错误:", error);
+
   if (error instanceof Error) {
     return {
       success: false,
-      error: error.message
+      error: error.message,
     };
   }
-  
+
   return {
     success: false,
-    error: '未知错误'
+    error: "未知错误",
   };
 }
 
@@ -446,4 +477,174 @@ export function validateRequiredParams(
     }
   }
   return null;
+}
+
+// ==================== 文档检测相关类型 ====================
+
+export interface DocumentDetectionResult {
+  id: string;
+  type: string;
+  content: string;
+  severity: "high" | "medium" | "low";
+  pageNumber?: number;
+  snippet?: string;
+}
+
+export interface DocumentDetectionOptions {
+  fileContent: string;
+  fileName: string;
+  fileType: string;
+}
+
+/**
+ * 检测文档中的敏感信息
+ */
+export async function detectDocumentSensitiveInfo(
+  options: DocumentDetectionOptions
+): Promise<ApiResponse<DocumentDetectionResult[]>> {
+  try {
+    const { fileContent, fileName, fileType } = options;
+
+    // 构建检测提示词
+    const prompt = buildDocumentDetectionPrompt(
+      fileContent,
+      fileName,
+      fileType
+    );
+
+    // 调用OpenAI进行检测
+    const chatResponse = await createChatCompletion({
+      messages: [createTextMessage(prompt)],
+      model: "doubao-seed-1-6-251015",
+      reasoning_effort: "high",
+    });
+
+    if (!chatResponse.success || !chatResponse.data) {
+      return {
+        success: false,
+        error: chatResponse.error || "文档检测失败",
+      };
+    }
+
+    // 解析检测结果
+    const results = parseDocumentDetectionResponse(chatResponse.data.content);
+
+    return {
+      success: true,
+      data: results,
+    };
+  } catch (error) {
+    console.error("文档检测失败:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "文档检测失败，请重试",
+    };
+  }
+}
+
+/**
+ * 构建文档检测提示词
+ */
+function buildDocumentDetectionPrompt(
+  fileContent: string,
+  fileName: string,
+  fileType: string
+): string {
+  return `请分析以下${fileType}文档内容，检测其中的敏感信息。请重点关注：
+
+1. 个人身份信息（姓名、身份证号、手机号等）
+2. 银行账户和财务信息
+3. 公司机密信息（合同金额、商业条款等）
+4. 密码和访问凭证
+5. 内部系统信息（IP地址、域名等）
+6. 医疗健康信息
+7. 签名和印章信息
+8. 其他隐私或敏感数据
+
+文件名称：${fileName}
+文件类型：${fileType}
+
+文档内容：
+${fileContent}
+
+请按照以下JSON格式返回检测结果，每个检测项包含：
+- id: 唯一标识符
+- type: 风险类型（如"个人信息"、"银行账号"等）
+- content: 具体描述
+- severity: 风险等级（high/medium/low）
+- pageNumber: 页码（如果可确定）
+- snippet: 相关文本片段
+
+返回格式示例：
+[
+  {
+    "id": "1",
+    "type": "个人信息",
+    "content": "检测到多个客户姓名和联系方式",
+    "severity": "high",
+    "pageNumber": 1,
+    "snippet": "张三 13800138000"
+  }
+]
+
+如果没有检测到敏感信息，返回空数组 []。`;
+}
+
+/**
+ * 解析文档检测响应
+ */
+function parseDocumentDetectionResponse(
+  response: string
+): DocumentDetectionResult[] {
+  try {
+    // 尝试提取JSON部分
+    const jsonMatch = response.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      console.warn("未找到有效的JSON响应");
+      return [];
+    }
+
+    const jsonStr = jsonMatch[0];
+    const results = JSON.parse(jsonStr);
+
+    // 验证结果格式
+    if (!Array.isArray(results)) {
+      return [];
+    }
+
+    return results.map((item, index) => ({
+      id: item.id || `doc-detection-${index}`,
+      type: item.type || "未知类型",
+      content: item.content || "检测到敏感信息",
+      severity: item.severity || "medium",
+      pageNumber: item.pageNumber,
+      snippet: item.snippet,
+    }));
+  } catch (error) {
+    console.error("解析检测结果失败:", error);
+    return [];
+  }
+}
+
+/**
+ * 验证文件是否为文档文件
+ */
+export function isDocumentFile(fileName: string): boolean {
+  const documentExtensions = [
+    "pdf",
+    "doc",
+    "docx",
+    "xls",
+    "xlsx",
+    "ppt",
+    "pptx",
+    "txt",
+    "rtf",
+    "odt",
+    "ods",
+    "odp",
+  ];
+
+  const extension = fileName.split(".").pop()?.toLowerCase();
+  return documentExtensions.includes(extension || "");
 }
