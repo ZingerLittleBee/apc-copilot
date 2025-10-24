@@ -3,6 +3,7 @@
  * 整合OpenAI、代码检测、数据库等所有后端服务
  */
 
+import { observeOpenAI } from "@langfuse/openai";
 import OpenAI from "openai";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 
@@ -18,10 +19,10 @@ function getOpenAIClient() {
     throw new Error("请配置 ARK_API_KEY 环境变量");
   }
 
-  return new OpenAI({
+  return observeOpenAI(new OpenAI({
     apiKey,
     baseURL: "https://ark.cn-beijing.volces.com/api/v3",
-  });
+  }));
 }
 
 // ==================== 类型定义 ====================
