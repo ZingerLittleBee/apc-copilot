@@ -44,6 +44,7 @@ const CLASS_NAME_MAP: Record<string, string> = {
   BUTTOCKS_COVERED: "遮盖臀部",
   FEET_COVERED: "遮盖脚部",
   ARMPITS_COVERED: "遮盖腋下",
+  FEMALE_GENITALIA_COVERED: "遮盖女性生殖器",
 }
 
 /**
