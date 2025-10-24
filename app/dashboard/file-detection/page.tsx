@@ -154,7 +154,7 @@ export default function FileDetectionPage() {
     // 创建图像预览
     const imageUrl = URL.createObjectURL(file)
     setUploadedImage(imageUrl)
-    
+
     // 模拟上传进度
     const uploadInterval = setInterval(() => {
       setProgress((prev) => {
@@ -180,7 +180,7 @@ export default function FileDetectionPage() {
       'swift', 'kt', 'scala', 'sh', 'bash', 'ps1', 'sql', 'json', 'xml', 'yaml', 'yml',
       'toml', 'ini', 'cfg', 'conf', 'env', 'properties'
     ]
-    
+
     const extension = file.name.split('.').pop()?.toLowerCase()
     if (!extension || !codeExtensions.includes(extension)) {
       setErrorMessage("请选择代码文件（支持 .js, .py, .java, .cpp, .json 等格式）")
@@ -193,12 +193,12 @@ export default function FileDetectionPage() {
     setStatus("uploading")
     setProgress(0)
     setErrorMessage("")
-    
+
     // 读取文件内容
     try {
       const content = await readFileContent(file)
       setUploadedCodeContent(content)
-      
+
       // 模拟上传进度
       const uploadInterval = setInterval(() => {
         setProgress((prev) => {
@@ -260,9 +260,9 @@ export default function FileDetectionPage() {
     try {
       // 读取文件内容
       const fileContent = await readFileContent(file)
-      
+
       // 调用统一API进行检测
-      const response = await fetch('/api?type=code-detection', {
+      const response = await fetch('/api/ai?type=code-detection', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -279,7 +279,7 @@ export default function FileDetectionPage() {
       }
 
       const data = await response.json()
-      
+
       if (!data.success) {
         throw new Error(data.error || '检测失败')
       }

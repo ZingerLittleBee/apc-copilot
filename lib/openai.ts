@@ -4,23 +4,24 @@
  */
 
 import OpenAI from 'openai';
+import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
+import { observeOpenAI } from "@langfuse/openai";
 
 // 初始化 OpenAI 客户端（仅在服务端）
 export function getOpenAIClient() {
   const apiKey = process.env['ARK_API_KEY'];
-  
+
   if (!apiKey) {
     throw new Error('请配置 ARK_API_KEY 环境变量');
   }
-  
-  return new OpenAI({
+
+  return observeOpenAI(new OpenAI({
     apiKey,
     baseURL: 'https://ark.cn-beijing.volces.com/api/v3',
-  });
+  }));
 }
 
-// 类型定义 - 使用OpenAI标准类型
-import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
+
 
 export interface ChatCompletionOptions {
   messages: ChatCompletionMessageParam[];
@@ -92,7 +93,7 @@ export async function createStreamingChatCompletion(
       content: part.choices[0]?.delta?.content || '',
       done: part.choices[0]?.finish_reason === 'stop',
     };
-    
+
     onChunk(chunk);
   }
 }
