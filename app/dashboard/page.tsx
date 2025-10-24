@@ -19,7 +19,7 @@ function convertToDataTableFormat(
     header: record.id, // 使用记录 ID 作为 header
     type: record.taskType || "unknown", // 任务类型
     status: record.aiResult?.blocked ? "Blocked" : "Done", // 根据 blocked 状态设置
-    target: record.aiResult?.overallRisk || "unknown", // 风险等级作为 target
+    risk: record.aiResult?.overallRisk || "unknown", // 风险等级作为 target
     limit: record.aiResult?.reasoning || "-", // 原因作为 limit
     reviewer: "Assign reviewer", // 默认值
   }))
