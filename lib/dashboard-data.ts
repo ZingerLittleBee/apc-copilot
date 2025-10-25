@@ -2,6 +2,7 @@
  * Dashboard 数据获取和处理工具
  */
 import {getTraceDetail, getTraceList} from "@/server/actions/data";
+import type {TraceWithFullDetails} from "@langfuse/core";
 
 export interface AITaskResult {
   risks: unknown[]
@@ -14,7 +15,7 @@ export interface ProcessedRecord {
   id: string
   taskType: string
   aiResult: AITaskResult | null
-  rawData: unknown
+  rawData: TraceWithFullDetails
 }
 
 export interface SectionCardStats {

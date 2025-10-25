@@ -23,6 +23,9 @@ importers:
       '@langfuse/client':
         specifier: ^4.2.1
         version: 4.2.1(@opentelemetry/api@1.9.0)
+      '@langfuse/core':
+        specifier: ^4.2.1
+        version: 4.2.1
       '@langfuse/openai':
         specifier: ^4.2.1
         version: 4.2.1(@opentelemetry/api@1.9.0)
