@@ -15,6 +15,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@langfuse/client": "^4.2.1",
+    "@langfuse/core": "^4.2.1",
     "@langfuse/openai": "^4.2.1",
     "@langfuse/otel": "^4.2.1",
     "@opentelemetry/instrumentation": "^0.207.0",

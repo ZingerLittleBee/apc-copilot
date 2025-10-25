@@ -1,12 +1,12 @@
 import { ChartAreaInteractive } from "@/components/chart-area-interactive"
-import { DataTable, schema } from "@/components/data-table"
+import { DataTable, type schema } from "@/components/data-table"
 import { SectionCards, type SectionCardData } from "@/components/section-cards"
 import {
   fetchAndProcessRecords,
   calculateStats,
   type ProcessedRecord,
 } from "@/lib/dashboard-data"
-import { z } from "zod"
+import type { z } from "zod"
 
 /**
  * 将 ProcessedRecord 转换为 DataTable 期望的格式
@@ -22,6 +22,7 @@ function convertToDataTableFormat(
     risk: record.aiResult?.overallRisk || "None",
     reasoning: record.aiResult?.reasoning || "-", // 原因作为 limit
     reviewer: "Assign reviewer", // 默认值
+      rowData: record.rawData,
   }))
 }
 

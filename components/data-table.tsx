@@ -124,6 +124,7 @@ export const schema = z.object({
   risk: z.string(),
     reasoning: z.string(),
   reviewer: z.string(),
+    rowData: z.any(),
 })
 
 // Create a separate component for the drag handle
