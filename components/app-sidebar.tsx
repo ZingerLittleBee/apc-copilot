@@ -8,24 +8,19 @@ import {
   IconFileAi,
   IconFileDescription,
   IconFileWord,
-  IconHelp,
   IconInnerShadowTop,
   IconReport,
-  IconSearch,
   IconSettings,
   IconShieldCheck,
   IconFileSearch,
   IconAlertTriangle,
 } from "@tabler/icons-react"
 
-import { NavDocuments } from "@/components/nav-documents"
 import { NavMain } from "@/components/nav-main"
 import { NavSecondary } from "@/components/nav-secondary"
-import { NavUser } from "@/components/nav-user"
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -40,7 +35,7 @@ const data = {
   },
   navMain: [
     {
-      title: "Dashboard",
+      title: "仪表盘",
       url: "/dashboard",
       icon: IconDashboard,
     },
